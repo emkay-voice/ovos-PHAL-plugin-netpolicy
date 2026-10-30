@@ -1,4 +1,6 @@
-# ovos-PHAL-plugin-tor
+# ovos-PHAL-plugin-netpolicy
+
+Per-service network policy for OpenVoiceOS — including enforced Tor routing.
 
 > **Status: idea / design stage.** Nothing here routes traffic yet. This repo
 > describes what the plugin should do, why, and what is hard about it.
@@ -47,7 +49,7 @@ plugin.
 {
   "PHAL": {
     "admin": {
-      "ovos-PHAL-plugin-tor": {
+      "ovos-PHAL-plugin-netpolicy": {
         "enabled": true,
         "fail_closed": true,
         "routes": {
@@ -60,6 +62,8 @@ plugin.
         "direct_allow": [],
         "block_ipv6": true,
         "tor": {
+          "binary": "tor",
+          "install_tor": false,
           "trans_port": 9040,
           "dns_port": 5353,
           "control_port": 9051
@@ -70,13 +74,24 @@ plugin.
 }
 ```
 
+## Tor
+
+The plugin runs **its own Tor instance** with a torrc generated from
+`mycroft.conf` (own data directory and ports, never touching
+`/etc/tor/torrc`). It does not install Tor by default — install the `tor`
+package with your distro (`apt install tor` / `dnf install tor`), or set
+`"install_tor": true` to opt in.
+
+Tor is just one mode: `blocked` and allow-lists are useful on their own (a
+LAN-only device, a child's room), and a WireGuard `vpn` mode could follow.
+
 ## Planned bus API
 
 | message                     | purpose                                         |
 |-----------------------------|-------------------------------------------------|
-| `ovos.tor.status`           | is Tor up, bootstrapped, which rules are active |
-| `ovos.tor.new_identity`     | request a new Tor circuit (NEWNYM via control port) |
-| `ovos.tor.reload`           | re-read config and re-apply firewall rules       |
+| `ovos.netpolicy.status`           | is Tor up, bootstrapped, which rules are active |
+| `ovos.netpolicy.new_identity`     | request a new Tor circuit (NEWNYM via control port) |
+| `ovos.netpolicy.reload`           | re-read config and re-apply firewall rules       |
 
 A small companion skill could answer "are you using Tor?" / "get a new
 identity", and a GUI/control-panel page could show the status.

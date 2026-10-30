@@ -70,13 +70,13 @@ Run ovos-core in a container/VM whose only route is a Tor gateway.
 
 ## 4. Fit with the OVOS way of doing things
 
-- Package: `ovos-PHAL-plugin-tor`, entry point group `opm.phal.admin`,
+- Package: `ovos-PHAL-plugin-netpolicy`, entry point group `opm.phal.admin`,
   class based on `ovos_plugin_manager.templates.phal.AdminPlugin`.
-- Config: `mycroft.conf` → `PHAL.admin.ovos-PHAL-plugin-tor`.
+- Config: `mycroft.conf` → `PHAL.admin.ovos-PHAL-plugin-netpolicy`.
   (Confirmed in `ovos_PHAL/admin.py`: admin plugins get
   `PHAL.admin.<name>`, and a plugin listed in the *user* PHAL config is
   skipped by the admin service.)
-- Bus: `ovos.tor.status`, `ovos.tor.new_identity`, `ovos.tor.reload`.
+- Bus: `ovos.netpolicy.status`, `ovos.netpolicy.new_identity`, `ovos.netpolicy.reload`.
 - Runtime requirements: declare that it does not need internet before load
   (it is the thing that sets up the internet path).
 - Should be harmless when disabled: on shutdown or `enabled: false`, remove its
@@ -92,7 +92,7 @@ new id, and the old rule no longer matches — the restarted service would then
 fall through to the default policy.
 
 Mitigations:
-- default policy for the `ovos_tor` chain must be **drop** for anything that
+- default policy for the `ovos_netpolicy` table must be **drop** for anything that
   looks like it came from an OVOS cgroup but is not matched (fail closed)
 - watch systemd (D-Bus `JobRemoved` / unit state changes) and/or bus
   `mycroft.skills.initialized`-style events, and re-apply rules on restart
@@ -156,12 +156,41 @@ firewalld (Fedora), ufw (Debian/Raspberry Pi OS), Docker's own rules. The
 plugin must use its own nftables table with clear priorities and never flush
 other tables.
 
-### 5.10 Managing Tor itself
+### 5.10 Managing Tor itself — decision
 
-Should the plugin install/configure Tor, or require it?
-Proposal for v1: **require** a system Tor, check that `TransPort`/`DNSPort`/
-`ControlPort` are configured, and report clearly if not. Writing to `torrc`
-from a plugin is more invasive and distro-specific.
+The plugin **configures and runs** Tor, but does **not install** it.
+
+- **Install:** a pip package should not call `apt`/`dnf` on its own — it is
+  distro-specific and surprising. Installing the `tor` binary belongs in
+  ovos-installer (which already installs system packages) and in the README.
+  An explicit opt-in `"install_tor": true` can be offered for people who want
+  it fully automatic.
+- **Configure and run:** the plugin starts its **own Tor instance**, not the
+  system one. It generates a torrc from `mycroft.conf` with its own
+  `DataDirectory` (e.g. `/var/lib/ovos-netpolicy/tor`), `TransPort`,
+  `DNSPort`, `ControlPort` (cookie auth) and `AutomapHostsOnResolve`, and
+  supervises the process (restart on crash, report bootstrap progress).
+  - never touches `/etc/tor/torrc` → no clash with a system Tor the user
+    already runs, and no distro differences in torrc layout
+  - the plugin always knows the exact ports and settings it relies on
+  - room for Tor options in config later: bridges/obfs4 (censored networks),
+    `ExitNodes` country, `StrictNodes`
+- If the `tor` binary is missing: the `tor` mode fails closed and status says
+  clearly that Tor is not installed.
+
+Config sketch:
+
+```json
+"tor": {
+  "binary": "tor",
+  "install_tor": false,
+  "trans_port": 9040,
+  "dns_port": 5353,
+  "control_port": 9051,
+  "bridges": [],
+  "exit_nodes": null
+}
+```
 
 ### 5.11 Docker installs
 
@@ -174,17 +203,25 @@ container in the compose file (option 3c).
 - The plugin runs as root, so its config is a privilege boundary: only root-
   readable/writeable config should be able to change routing. A bus message
   must never be able to switch a service from `tor` to `direct` without that.
-- `ovos.tor.new_identity` is harmless and can be bus-accessible.
+- `ovos.netpolicy.new_identity` is harmless and can be bus-accessible.
 
-## 6. Open questions
+## 6. Beyond Tor
 
-- naming: `ovos-PHAL-plugin-tor` vs something broader like
-  `ovos-PHAL-plugin-netpolicy` (Tor is one mode; `blocked`/allow-lists are
-  useful on their own)
+The plugin is a general per-service network policy; Tor is one mode. Other
+uses the same machinery supports:
+
+- `blocked` — e.g. a device in a child's room that may only reach the LAN
+- an enforced "local only" setup: every service `blocked` + `lan_allow`
+- later: `vpn:<interface>` — route a service out via WireGuard using an
+  fwmark + policy routing table instead of a Tor redirect
+- later: per-mode allow-lists (`direct` but only to the STT/TTS servers)
+
+## 7. Open questions
+
 - should STT/TTS optionally go via Tor too (privacy vs. latency)?
 - interest from the OVOS maintainers in having this under OpenVoiceOS
 
-## 7. Next steps
+## 8. Next steps
 
 1. verify unit names and cgroup paths on the test machines (stable + alpha)
 2. manual proof of concept: hand-written nftables rules + Tor on the alpha
