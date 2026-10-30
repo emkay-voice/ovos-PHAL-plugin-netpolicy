@@ -82,6 +82,11 @@ The plugin runs **its own Tor instance** with a torrc generated from
 package with your distro (`apt install tor` / `dnf install tor`), or set
 `"install_tor": true` to opt in.
 
+Modes beyond `direct`/`blocked` come from **backend packages** pulled in as
+extras (`pip install ovos-PHAL-plugin-netpolicy[tor]`), so others can add
+their own (WireGuard, I2P, …). A bundled tor binary (Tor Expert Bundle) is
+planned as an optional extra for x86_64 and aarch64 — see the design notes.
+
 Tor is just one mode: `blocked` and allow-lists are useful on their own (a
 LAN-only device, a child's room), and a WireGuard `vpn` mode could follow.
 

@@ -205,7 +205,103 @@ container in the compose file (option 3c).
   must never be able to switch a service from `tor` to `direct` without that.
 - `ovos.netpolicy.new_identity` is harmless and can be bus-accessible.
 
-## 6. Beyond Tor
+## 6. Backend architecture and packaging
+
+### 6.1 Core + backends
+
+The core package knows only policies, cgroups and nftables, plus the built-in
+modes `direct` and `blocked` with allow-lists. Everything that needs a daemon
+or a tunnel is a **backend**, found through an entry point group
+(proposal: `ovos.netpolicy.backend`), in the same spirit as OPM plugins.
+
+```bash
+pip install ovos-PHAL-plugin-netpolicy              # core: direct / blocked / allow-lists
+pip install ovos-PHAL-plugin-netpolicy[tor]         # + ovos-netpolicy-backend-tor
+pip install ovos-PHAL-plugin-netpolicy[wireguard]   # + ovos-netpolicy-backend-wireguard
+```
+
+A backend provides:
+
+- a mode name (`tor`, `vpn`, …) usable in `routes`
+- `start()` / `stop()` / `status()` for its daemon or interface
+- the rules it needs, as data the core turns into nftables / policy routing:
+  either *redirect TCP/DNS to local ports* (Tor, a local SOCKS→transparent
+  helper) or *mark with fwmark → routing table* (WireGuard, other VPNs)
+- its own config section under the plugin config
+
+The core keeps sole ownership of the nftables table, so a buggy backend
+cannot open holes: it can only ask for redirects/marks inside the policy, and
+fail-closed stays the core's job.
+
+Third parties can then add `-i2p`, `-socks` (an external proxy), etc. without
+changes to the core.
+
+### 6.2 Where the tor binary comes from
+
+pip cannot install a C program from the distro. The tor backend therefore
+looks for a binary in this order (the same chain Unseenet uses):
+
+1. explicit `tor.binary` in config
+2. an environment variable (e.g. `OVOS_NETPOLICY_TOR`)
+3. a **bundled** binary shipped inside a platform wheel
+4. `tor` on `PATH` (distro package)
+
+and fails closed with a clear status if none is found.
+
+### 6.3 Bundling the Tor Expert Bundle — architecture coverage
+
+The Tor Project publishes the *Tor Expert Bundle* specifically for apps that
+bundle tor (tor + pluggable transports/lyrebird + bridge strings + geoip).
+Linux coverage as checked on the download page/mirrors (October 2026):
+
+| Linux arch | stable channel | alpha channel | relevant for OVOS |
+|------------|----------------|---------------|-------------------|
+| x86_64     | ✅             | ✅            | PCs, VMs, test boxes |
+| i686       | ✅             | ❌ (dropped)  | hardly |
+| aarch64    | ❌             | ✅            | Raspberry Pi 4/5 (64-bit), Mark II |
+| armv7      | ❌             | ❌            | 32-bit Pi OS |
+
+So: **aarch64 only exists in the alpha channel** of the Expert Bundle. On the
+mirror checked, the alpha bundle carried the same tor version as stable
+(0.4.9.5) — the "alpha" label is about the Tor Browser build, not necessarily
+the daemon — but that has to be re-checked per release. **[verify]**
+32-bit ARM has no bundle at all → distro `tor` only.
+
+Proposal:
+
+- `ovos-netpolicy-backend-tor` is a pure-Python package (stem, torrc
+  generation, supervision) — always works with a distro `tor`.
+- an optional extra, e.g. `[tor-bundled]`, pulls a platform wheel
+  (`ovos-netpolicy-tor-bin`) with the Expert Bundle for `manylinux_x86_64`
+  and `manylinux_aarch64`. No wheel for armv7 → pip falls back to nothing, and
+  the distro binary is used.
+- the bundle must be verified (signature) at wheel build time in CI, and a
+  new wheel released for every Tor security release — that is the real cost
+  of bundling. Distro `tor` remains the recommended path.
+
+### 6.4 Lessons to reuse from Unseenet's tor handling
+
+Unseenet already runs a bundled Expert Bundle tor in portable builds. Things
+that apply directly here:
+
+- the Expert Bundle ships its own libevent/OpenSSL next to `tor` → launch
+  with `LD_LIBRARY_PATH` set to the binary's folder
+- files unpacked from a wheel/zip may lose the exec bit → fall back to
+  running it via the dynamic loader (`/lib64/ld-linux-x86-64.so.2`,
+  `/lib/ld-linux-aarch64.so.1`), or fix permissions at first start
+- built-in bridges come from the bundle's `pluggable_transports/pt_config.json`;
+  bridges need `lyrebird` from the same bundle
+- start tor with `__OwningControllerProcess` so it quits by itself if the
+  plugin dies — no orphaned Tor holding the data directory
+- never stop a Tor that another program is using; only clean up one whose
+  owner is gone
+- read bootstrap progress from the control port (`PROGRESS=` / `SUMMARY=`)
+  for the status message
+
+Worth considering later: a small shared "tor runtime" library used by both
+projects instead of two copies of the same logic.
+
+## 7. Beyond Tor
 
 The plugin is a general per-service network policy; Tor is one mode. Other
 uses the same machinery supports:
@@ -216,12 +312,14 @@ uses the same machinery supports:
   fwmark + policy routing table instead of a Tor redirect
 - later: per-mode allow-lists (`direct` but only to the STT/TTS servers)
 
-## 7. Open questions
+## 8. Open questions
 
+- entry point group name for backends (`ovos.netpolicy.backend`?) and whether
+  it belongs in OPM
 - should STT/TTS optionally go via Tor too (privacy vs. latency)?
 - interest from the OVOS maintainers in having this under OpenVoiceOS
 
-## 8. Next steps
+## 9. Next steps
 
 1. verify unit names and cgroup paths on the test machines (stable + alpha)
 2. manual proof of concept: hand-written nftables rules + Tor on the alpha

@@ -16,7 +16,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-tor = ["stem"]
+# planned: backends as separate packages
+tor = ["stem"]  # -> "ovos-netpolicy-backend-tor"
+# tor-bundled = ["ovos-netpolicy-backend-tor", "ovos-netpolicy-tor-bin"]
+# wireguard = ["ovos-netpolicy-backend-wireguard"]
 
 [project.urls]
 Homepage = "https://github.com/andlo/ovos-PHAL-plugin-netpolicy"
