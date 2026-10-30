@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ovos-PHAL-plugin-tor"
+version = "0.0.0a1"
+description = "PHAL admin plugin: per-service network policy for OVOS, with enforced Tor routing (design stage)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Andreas Lorensen" }]
+requires-python = ">=3.9"
+dependencies = [
+    "ovos-plugin-manager",
+    "ovos-bus-client",
+]
+
+[project.optional-dependencies]
+tor = ["stem"]
+
+[project.urls]
+Homepage = "https://github.com/andlo/ovos-PHAL-plugin-tor"
+
+[project.entry-points."opm.phal.admin"]
+"ovos-PHAL-plugin-tor" = "ovos_phal_plugin_tor:TorAdminPlugin"
+
+[tool.setuptools]
+packages = ["ovos_phal_plugin_tor"]
