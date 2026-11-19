@@ -22,7 +22,7 @@ tor = ["stem"]  # -> "ovos-netpolicy-backend-tor"
 # wireguard = ["ovos-netpolicy-backend-wireguard"]
 
 [project.urls]
-Homepage = "https://github.com/andlo/ovos-PHAL-plugin-netpolicy"
+Homepage = "https://github.com/emkay-voice/ovos-PHAL-plugin-netpolicy"
 
 [project.entry-points."opm.phal.admin"]
 "ovos-PHAL-plugin-netpolicy" = "ovos_phal_plugin_netpolicy:NetPolicyAdminPlugin"
