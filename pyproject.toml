@@ -1,32 +1,46 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ovos-PHAL-plugin-netpolicy"
-version = "0.0.0a1"
-description = "PHAL admin plugin: per-service network policy for OVOS, with enforced Tor routing (design stage)"
+version = "0.0.1a1"
+description = "OpenVoiceOS PHAL admin plugin: which of OVOS' services may reach the internet, enforced with nftables, and local only from the bus"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = {text = "Apache-2.0"}
 authors = [{name = "emkay-voice"}]
 maintainers = [{name = "Andreas Lorensen"}]
 requires-python = ">=3.9"
+keywords = ["ovos", "openvoiceos", "plugin", "phal", "privacy", "firewall", "nftables", "local only", "emkay"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking :: Firewalls",
+]
 dependencies = [
     "ovos-plugin-manager",
     "ovos-bus-client",
+    "ovos-utils",
+    "ovos-config",
 ]
 
 [project.optional-dependencies]
-# planned: backends as separate packages
-tor = ["stem"]  # -> "ovos-netpolicy-backend-tor"
-# tor-bundled = ["ovos-netpolicy-backend-tor", "ovos-netpolicy-tor-bin"]
-# wireguard = ["ovos-netpolicy-backend-wireguard"]
+test = ["pytest"]
+# planned, as separate packages: ovos-netpolicy-backend-tor, -wireguard (see docs/DESIGN.md)
 
 [project.urls]
 Homepage = "https://github.com/emkay-voice/ovos-PHAL-plugin-netpolicy"
+Issues = "https://github.com/emkay-voice/ovos-PHAL-plugin-netpolicy/issues"
+Emkay = "https://github.com/emkay-voice/emkay"
+Icon = "https://raw.githubusercontent.com/emkay-voice/ovos-PHAL-plugin-netpolicy/dev/res/icon.png"
 
 [project.entry-points."opm.phal.admin"]
 "ovos-PHAL-plugin-netpolicy" = "ovos_phal_plugin_netpolicy:NetPolicyAdminPlugin"
 
 [tool.setuptools]
 packages = ["ovos_phal_plugin_netpolicy"]
+
+[tool.setuptools.package-data]
+ovos_phal_plugin_netpolicy = ["controlpanel.json", "controlpanel.svg", "locale/*/*.json"]

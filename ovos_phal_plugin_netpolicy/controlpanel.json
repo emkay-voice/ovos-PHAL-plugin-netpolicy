@@ -1,0 +1,50 @@
+{
+ "controlpanel": 1,
+ "id": "netpolicy",
+ "path": "/netpolicy",
+ "title": "netpolicy.title",
+ "group": "device",
+ "order": 15,
+ "icon": "controlpanel.svg",
+ "bus": "ovos.netpolicy.",
+ "blocks": [
+  {"type": "text", "text": "netpolicy.intro"},
+  {
+   "type": "status",
+   "heading": "netpolicy.now.title",
+   "query": "ovos.netpolicy.status",
+   "refresh": 15,
+   "rows": [
+    {"label": "netpolicy.state", "value": "{state@netpolicy.state}"},
+    {"label": "netpolicy.local", "value": "{local@netpolicy.local}"},
+    {"text": "netpolicy.hint.speech", "when": "speech_server"},
+    {"label": "netpolicy.refusedToday", "value": "{refused_today}"},
+    {"label": "netpolicy.source", "value": "{policy_source}"},
+    {"text": "netpolicy.hint.nflog", "when": "nflog_off"}
+   ],
+   "actions": [{"label": "netpolicy.reload", "send": "ovos.netpolicy.reload"}]
+  },
+  {
+   "type": "list",
+   "heading": "netpolicy.units.title",
+   "query": "ovos.netpolicy.status",
+   "items": "units",
+   "key": "unit",
+   "title": "{unit}",
+   "meta": "netpolicy.units.meta",
+   "empty": "netpolicy.units.none"
+  },
+  {
+   "type": "list",
+   "heading": "netpolicy.refused.title",
+   "query": "ovos.netpolicy.status",
+   "items": "refusals",
+   "key": "id",
+   "title": "{service}",
+   "meta": "netpolicy.refused.meta",
+   "empty": "netpolicy.refused.none",
+   "filter": {"by": "who", "label": "netpolicy.refused.filter", "all": "netpolicy.refused.everyone"}
+  },
+  {"type": "text", "text": "netpolicy.howto"}
+ ]
+}

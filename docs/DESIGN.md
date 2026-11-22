@@ -5,6 +5,13 @@ challenges that need solving before this plugin can be trusted. Items marked
 **[verify]** are assumptions that must be tested on a live system before code
 depends on them.
 
+> **Where it stands (0.0.1a1):** steps 1–4 of §9 are done for `direct` and
+> `blocked`: verified on ovos-installer user units (poc/README.md), and built
+> as the plugin, with local only from the bus and refusals read from NFLOG.
+> 5.1 is answered by blocking the whole `app.slice` by default; 5.4 (names
+> through systemd-resolved) is still open; Tor, backends and per-skill routes
+> are not built yet.
+
 ## 1. The idea
 
 OVOS can already run almost fully offline. What is missing is a middle ground:
