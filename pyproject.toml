@@ -9,6 +9,7 @@ description = "PHAL admin plugin: per-service network policy for OVOS, with enfo
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{name = "emkay-voice"}]
+maintainers = [{name = "Andreas Lorensen"}]
 requires-python = ">=3.9"
 dependencies = [
     "ovos-plugin-manager",
